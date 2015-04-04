@@ -18,13 +18,17 @@ type Globals struct {
 	templates *template.Template
 }
 
+func makeGlobals(templateDir string) *Globals {
+	globals := new(Globals)
+	globals.templates = makeTemplates(templateDir)
+	return globals
+}
+
 func makeTemplates(templateDir string) *template.Template {
 	return nil
 }
 
-func globalsMiddleware(templateDir string) func(*Context, web.ResponseWriter, *web.Request, web.NextMiddlewareFunc) {
-	globals := new(Globals)
-	globals.templates = makeTemplates(templateDir)
+func globalsMiddleware(globals *Globals) func(*Context, web.ResponseWriter, *web.Request, web.NextMiddlewareFunc) {
 	return func(c *Context, rw web.ResponseWriter, req *web.Request, next web.NextMiddlewareFunc) {
 		c.globals = globals
 		next(rw, req)
@@ -41,9 +45,11 @@ func setUpRoutes(router *web.Router) {
 }
 
 func main() {
+	globals := makeGlobals("")
+
 	router := web.New(Context{})
 	router.Middleware(web.LoggerMiddleware)
-	router.Middleware(globalsMiddleware(""))
+	router.Middleware(globalsMiddleware(globals))
 
 	setUpRoutes(router)
 	http.ListenAndServe("localhost:3000", router)
