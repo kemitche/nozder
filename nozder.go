@@ -1,11 +1,13 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"html/template"
 	"net/http"
 
 	"github.com/gocraft/web"
+	"github.com/vharitonsky/iniflags"
 )
 
 // Context is the Nozder web app's request context
@@ -15,12 +17,34 @@ type Context struct {
 
 // Globals exist through every request; this should be configuration mostly
 type Globals struct {
-	templates *template.Template
+	host        *string
+	port        *int
+	templateDir *string
+	templates   *template.Template
 }
 
-func makeGlobals(templateDir string) *Globals {
+func (globals *Globals) initialize() {
+	globals.templates = makeTemplates(*globals.templateDir)
+}
+
+func (globals *Globals) serveOn() string {
+	return fmt.Sprintf("%s:%d", *globals.host, *globals.port)
+}
+
+func (globals *Globals) String() string {
+	return fmt.Sprintf("Serving on: %s", globals.serveOn())
+}
+
+func makeGlobals() *Globals {
 	globals := new(Globals)
-	globals.templates = makeTemplates(templateDir)
+	globals.host = flag.String("host", "localhost", "Server host name")
+	globals.port = flag.Int("port", 9000, "Server listen port")
+	globals.templateDir = flag.String("templates", "", "Location of HTML templates")
+
+	iniflags.Parse()
+
+	fmt.Println(globals)
+
 	return globals
 }
 
@@ -45,12 +69,13 @@ func setUpRoutes(router *web.Router) {
 }
 
 func main() {
-	globals := makeGlobals("")
+	globals := makeGlobals()
+	globals.initialize()
 
 	router := web.New(Context{})
 	router.Middleware(web.LoggerMiddleware)
 	router.Middleware(globalsMiddleware(globals))
 
 	setUpRoutes(router)
-	http.ListenAndServe("localhost:3000", router)
+	http.ListenAndServe(globals.serveOn(), router)
 }
