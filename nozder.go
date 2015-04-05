@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"github.com/gocraft/web"
 	"github.com/vharitonsky/iniflags"
@@ -48,8 +50,32 @@ func makeGlobals() *Globals {
 	return globals
 }
 
+type twitchPage struct {
+	streamID string
+}
+
+var requiredTemplates = []string{"twitch.html"}
+
 func makeTemplates(templateDir string) *template.Template {
-	return nil
+	if templateDir == "" {
+		// Assume this was run from the root directory of nozder source
+		cwd, err := os.Getwd()
+		if err != nil {
+			// We're not going to be able to load the templates if we don't have
+			// a template directory.
+			panic(err)
+		}
+		templateDir = filepath.Join(cwd, "templates")
+	}
+	// TODO: Better logging!
+	fmt.Println("loading templates from " + templateDir)
+
+	templatePaths := make([]string, len(requiredTemplates), len(requiredTemplates))
+	for index, templateName := range requiredTemplates {
+		templatePaths[index] = filepath.Join(templateDir, templateName)
+	}
+
+	return template.Must(template.ParseFiles(templatePaths...))
 }
 
 func globalsMiddleware(globals *Globals) func(*Context, web.ResponseWriter, *web.Request, web.NextMiddlewareFunc) {
