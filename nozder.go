@@ -51,7 +51,7 @@ func makeGlobals() *Globals {
 }
 
 type twitchPage struct {
-	streamID string
+	StreamID string
 }
 
 var requiredTemplates = []string{"twitch.html"}
@@ -78,6 +78,18 @@ func makeTemplates(templateDir string) *template.Template {
 	return template.Must(template.ParseFiles(templatePaths...))
 }
 
+func renderError(w http.ResponseWriter, err error) {
+	http.Error(w, err.Error(), http.StatusInternalServerError)
+}
+
+func renderTemplate(templates *template.Template, w http.ResponseWriter, templateName string, p *twitchPage) {
+	err := templates.ExecuteTemplate(w, templateName, p)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
 func globalsMiddleware(globals *Globals) func(*Context, web.ResponseWriter, *web.Request, web.NextMiddlewareFunc) {
 	return func(c *Context, rw web.ResponseWriter, req *web.Request, next web.NextMiddlewareFunc) {
 		c.globals = globals
@@ -86,8 +98,8 @@ func globalsMiddleware(globals *Globals) func(*Context, web.ResponseWriter, *web
 }
 
 func (c *Context) showTwitchStream(rw web.ResponseWriter, req *web.Request) {
-	fmt.Fprint(rw, "Hello world!")
-	fmt.Fprint(rw, "<br>You're about to watch:", req.PathParams["id"])
+	page := &twitchPage{StreamID: req.PathParams["id"]}
+	renderTemplate(c.globals.templates, rw, "twitch.html", page)
 }
 
 func setUpRoutes(router *web.Router) {
