@@ -1,5 +1,9 @@
 <html>
 <body>
   <h1>Watching: {{.StreamID}}</h1>
+  <iframe id="player" type="text/html" width="{{.Width}}" height="{{.Height}}"
+    src="http://www.twitch.tv/{{.StreamID}}/embed"
+    frameborder="0">
+  </iframe>
 </body>
 </html>

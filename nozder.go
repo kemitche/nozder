@@ -52,6 +52,8 @@ func makeGlobals() *Globals {
 
 type twitchPage struct {
 	StreamID string
+	Width    int
+	Height   int
 }
 
 var requiredTemplates = []string{"twitch.html"}
@@ -98,7 +100,7 @@ func globalsMiddleware(globals *Globals) func(*Context, web.ResponseWriter, *web
 }
 
 func (c *Context) showTwitchStream(rw web.ResponseWriter, req *web.Request) {
-	page := &twitchPage{StreamID: req.PathParams["id"]}
+	page := &twitchPage{StreamID: req.PathParams["id"], Width: 800, Height: 600}
 	renderTemplate(c.globals.templates, rw, "twitch.html", page)
 }
 
