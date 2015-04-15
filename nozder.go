@@ -19,14 +19,19 @@ type Context struct {
 
 // Globals exist through every request; this should be configuration mostly
 type Globals struct {
-	host        *string
-	port        *int
-	templateDir *string
-	templates   *template.Template
+	host           *string
+	port           *int
+	templateDir    *string
+	templates      *template.Template // Configured in initialize
+	twitchClientID *string
+	twitchCfg      *TwitchConfig // Configured in initialize
 }
 
+// TODO: Re-initialize on SIGHUP?
+// TODO: panic on misconfig?
 func (globals *Globals) initialize() {
 	globals.templates = makeTemplates(*globals.templateDir)
+	globals.twitchCfg = &TwitchConfig{version: 3, clientID: *globals.twitchClientID}
 }
 
 func (globals *Globals) serveOn() string {
@@ -42,6 +47,7 @@ func makeGlobals() *Globals {
 	globals.host = flag.String("host", "localhost", "Server host name")
 	globals.port = flag.Int("port", 9000, "Server listen port")
 	globals.templateDir = flag.String("templates", "", "Location of HTML templates")
+	globals.twitchClientID = flag.String("twitch-client-id", "", "Twitch API client ID")
 
 	iniflags.Parse()
 
@@ -56,7 +62,11 @@ type twitchPage struct {
 	Height   int
 }
 
-var requiredTemplates = []string{"twitch.html"}
+type pageList struct {
+	TwitchPages [9]twitchPage
+}
+
+var requiredTemplates = []string{"twitch.html", "grid.html"}
 
 func makeTemplates(templateDir string) *template.Template {
 	if templateDir == "" {
@@ -84,7 +94,7 @@ func renderError(w http.ResponseWriter, err error) {
 	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
 
-func renderTemplate(templates *template.Template, w http.ResponseWriter, templateName string, p *twitchPage) {
+func renderTemplate(templates *template.Template, w http.ResponseWriter, templateName string, p interface{}) {
 	err := templates.ExecuteTemplate(w, templateName, p)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -104,8 +114,26 @@ func (c *Context) showTwitchStream(rw web.ResponseWriter, req *web.Request) {
 	renderTemplate(c.globals.templates, rw, "twitch.html", page)
 }
 
+func (c *Context) showTwitchGrid(rw web.ResponseWriter, req *web.Request) {
+	streamID := req.PathParams["id"]
+	streams := pageList{}
+	for i := 0; i < len(streams.TwitchPages); i++ {
+		streams.TwitchPages[i].Height = 300
+		streams.TwitchPages[i].Width = 300
+		streams.TwitchPages[i].StreamID = streamID
+	}
+	renderTemplate(c.globals.templates, rw, "grid.html", streams)
+}
+
+func (c *Context) tempSearch(rw web.ResponseWriter, req *web.Request) {
+	query := req.PathParams["query"]
+	var cfg TwitchConfig = c.globals.twitchCfg
+	cfg.searchForGameStreams(query, false)
+}
+
 func setUpRoutes(router *web.Router) {
 	router.Get("/twitch/:id", (*Context).showTwitchStream)
+	router.Get("/grid/:id", (*Context).showTwitchGrid)
 }
 
 func main() {

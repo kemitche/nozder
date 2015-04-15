@@ -1,0 +1,11 @@
+<html>
+<body>
+  {{ range .TwitchPages }}
+    <h3>Miniature: {{.StreamID}}</h3>
+    <iframe id="player" type="text/html" width="{{.Width}}" height="{{.Height}}"
+      src="http://www.twitch.tv/{{.StreamID}}/embed"
+      frameborder="0">
+    </iframe>
+  {{ end }}
+</body>
+</html>
